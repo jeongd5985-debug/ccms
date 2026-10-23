@@ -42,6 +42,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -189,7 +190,7 @@ body { margin: 0; }
 
 <!-- TAB 1 -->
 <section class="panel" data-tab="docs" data-label="서류" hidden>
-  <div class="sec-head"><h2>행정처리업무 서류 모음</h2><p>업로드한 서류 5개 (원본 파일은 이 페이지에 포함되지 않고 요약만 담김)</p></div>
+  <div class="sec-head"><h2>행정처리업무 서류 모음</h2><p>서류별 요약과 PDF 원본 다운로드</p></div>
   <div class="stack">
 
     <article class="doc" data-idx data-title="등기사항전부증명서 (말소사항 포함)">
@@ -287,10 +288,12 @@ body { margin: 0; }
       <div class="row"><span class="k">세무서</span><span class="v">영등포세무서 (민원봉사실)</span></div>
       <div class="row"><span class="k">연락처</span><span class="vwrap"><span class="v big mono">02-2630-9227</span><button class="copy" data-copy="02-2630-9227" type="button">복사</button></span></div>
     </div>
-    <div class="card" data-idx data-title="홈페이지" id="hpCard" data-extra="">
-      <h3>홈페이지</h3>
-      <div class="row"><span class="k">주소</span><span class="vwrap"><input class="hp" id="hp" type="text" placeholder="주소를 입력하세요" aria-label="홈페이지 주소"><button class="copy" id="hpCopy" type="button">복사</button></span></div>
-      <p class="note" style="margin-top:8px">입력한 주소는 이 브라우저에만 저장됨. 정관 제31조에 따라 기부금·활동실적 공개 장소.</p>
+    <div class="card" data-idx data-title="홈페이지 · 워드프레스 관리자">
+      <h3>홈페이지 · 워드프레스 관리자</h3>
+      <div class="row"><span class="k">홈페이지</span><span class="vwrap"><a class="v" href="http://chinacapitalmarket.co.kr/" target="_blank" rel="noopener">chinacapitalmarket.co.kr</a><button class="copy" data-copy="http://chinacapitalmarket.co.kr/" type="button">복사</button></span></div>
+      <div class="row"><span class="k">관리자 주소</span><span class="vwrap"><a class="v" href="http://chinacapitalmarket.co.kr/wp-admin" target="_blank" rel="noopener">chinacapitalmarket.co.kr/wp-admin</a><button class="copy" data-copy="http://chinacapitalmarket.co.kr/wp-admin" type="button">복사</button></span></div>
+      <div class="row"><span class="k">아이디</span><span class="vwrap"><span class="v mono">ne02</span><button class="copy" data-copy="ne02" type="button">복사</button></span></div>
+      <div class="row"><span class="k">비밀번호</span><span class="vwrap"><span class="v mono" id="pwView">••••••••••</span><button class="copy" id="pwShow" type="button">보기</button><button class="copy" id="pwCopy" data-copy="Neo@0224!rq" type="button">복사</button></span></div>
     </div>
     <div class="card" data-idx data-title="법인 개요">
       <h3>법인 개요</h3>
@@ -455,14 +458,13 @@ body { margin: 0; }
     box.innerHTML = '<a class="btn" href="' + url + '" target="_blank" rel="noopener">PDF 열기</a><a class="btn primary" href="' + url + '" download="' + name + '">PDF 다운로드</a>';
   });
 
-  // homepage (per-browser)
-  var hp = document.getElementById("hp"), hpCard = document.getElementById("hpCard");
-  try { var sv = localStorage.getItem("jjy-homepage"); if (sv) { hp.value = sv; hpCard.setAttribute("data-extra", sv); } } catch (e) {}
-  hp.addEventListener("input", function () {
-    hpCard.setAttribute("data-extra", hp.value);
-    try { localStorage.setItem("jjy-homepage", hp.value); } catch (e) {}
+  // wp password show/hide
+  var pwView = document.getElementById("pwView"), pwShow = document.getElementById("pwShow"), pwShown = false;
+  pwShow.addEventListener("click", function () {
+    pwShown = !pwShown;
+    pwView.textContent = pwShown ? document.getElementById("pwCopy").getAttribute("data-copy") : "••••••••••";
+    pwShow.textContent = pwShown ? "숨김" : "보기";
   });
-  document.getElementById("hpCopy").addEventListener("click", function () { if (hp.value) copyText(hp.value, this); });
 
   // spotlight
   var ov = document.getElementById("ov"), q = document.getElementById("q"), res = document.getElementById("res");
