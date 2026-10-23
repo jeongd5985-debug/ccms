@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>중자연 관리자</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky top bar (name + Spotlight) -> tab strip -> single-column work area, max 1040px */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eaeef4;
+  --fg: #1b2433;
+  --muted: #5b6678;
+  --line: #d6dce6;
+  --accent: #2b3f78;
+  --accent-fg: #ffffff;
+  --accent-soft: #e3e9f8;
+  --hit: #fff1b8;
+  --ok: #1f7a4d;
+  --warn: #a05a00;
+  --warn-soft: #fdf0d9;
+  --crit: #b3261e;
+  --crit-soft: #fbe4e2;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161e; --surface: #1b212c; --surface-2: #252d3b; --fg: #e6eaf2; --muted: #98a3b7;
+    --line: #333d4e; --accent: #8fa8f0; --accent-fg: #10162a; --accent-soft: #26304d; --hit: #5a4a10;
+    --ok: #5fcf97; --warn: #f0b45a; --warn-soft: #3a2d14; --crit: #ff8f86; --crit-soft: #3d1f1d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161e; --surface: #1b212c; --surface-2: #252d3b; --fg: #e6eaf2; --muted: #98a3b7;
+  --line: #333d4e; --accent: #8fa8f0; --accent-fg: #10162a; --accent-soft: #26304d; --hit: #5a4a10;
+  --ok: #5fcf97; --warn: #f0b45a; --warn-soft: #3a2d14; --crit: #ff8f86; --crit-soft: #3d1f1d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.wrap { max-width: 1040px; margin: 0 auto; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); padding-block: 14px 10px; }
+.top-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+.brand { min-width: 0; }
+.brand small { display: block; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+.brand h1 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.spot-btn {
+  display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 1 340px; width: 100%; max-width: 340px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; color: var(--muted); text-align: left;
+}
+.spot-btn:hover { border-color: var(--accent); }
+.spot-btn span.t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+kbd { font-family: var(--font-mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--muted); }
+.spot-btn svg { flex: none; }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; margin-top: 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; color: var(--muted); font-weight: 500; white-space: nowrap; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab:hover { color: var(--fg); }
+.panel { padding-top: 22px; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sec-head h2 { font-size: 18px; font-weight: 700; }
+.sec-head p { margin: 0; color: var(--muted); font-size: 13px; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.note { background: var(--surface-2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--muted); }
+.note b { color: var(--fg); }
+
+/* docs */
+.doc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 12px; }
+.doc-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.doc h3 { font-size: 16px; font-weight: 700; }
+.doc .file { font-family: var(--font-mono); font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 2px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.crit { background: var(--crit-soft); color: var(--crit); }
+.tag.ok { background: var(--accent-soft); color: var(--ok); }
+.doc p { margin: 0; }
+.kv { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.scroll-x { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .03em; background: var(--surface-2); white-space: nowrap; }
+table.docs-table { min-width: 460px; }
+ul.clean { margin: 0; padding-left: 1.2em; font-size: 14px; }
+ul.clean li { margin: 2px 0; }
+
+.dl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn { display: inline-block; font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); border-radius: 8px; padding: 6px 12px; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.primary:hover { color: var(--accent-fg); opacity: .9; }
+.btn[disabled] { opacity: .6; cursor: default; }
+.dl-msg { font-size: 12px; color: var(--muted); }
+/* info */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.card h3 { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .04em; margin-bottom: 10px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row .k { color: var(--muted); font-size: 13px; flex: none; }
+.row .v { min-width: 0; text-align: right; overflow-wrap: anywhere; font-weight: 500; }
+.row .v.big { font-size: 17px; }
+.copy { flex: none; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; font-size: 12px; padding: 2px 8px; color: var(--muted); }
+.copy:hover { color: var(--accent); border-color: var(--accent); }
+.vwrap { display: flex; align-items: center; gap: 8px; min-width: 0; justify-content: flex-end; }
+input.hp { font: inherit; min-width: 0; width: 100%; max-width: 230px; background: var(--bg); color: var(--fg); border: 1px dashed var(--line); border-radius: 6px; padding: 4px 8px; text-align: right; }
+input.hp::placeholder { color: var(--muted); }
+
+/* tasks */
+.next { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.next .card { padding: 14px 16px; }
+.next .dd { font-family: var(--font-mono); font-size: 26px; font-weight: 500; line-height: 1.1; }
+.next .nm { font-weight: 600; margin-top: 6px; }
+.next .wh { color: var(--muted); font-size: 13px; }
+.dchip { display: inline-block; font-family: var(--font-mono); font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.dchip.soon { background: var(--warn-soft); color: var(--warn); }
+.dchip.urgent { background: var(--crit-soft); color: var(--crit); }
+.when { font-weight: 600; white-space: nowrap; }
+.when.none { color: var(--muted); font-weight: 400; }
+.orig { color: var(--muted); font-size: 13px; }
+.cal { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; margin-bottom: 20px; }
+.cal .m { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px 8px; text-align: center; min-height: 70px; }
+.cal .m b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.cal .m.now { border-color: var(--accent); }
+.cal .m.now b { color: var(--accent); }
+.cal .n { display: inline-block; margin-top: 4px; font-family: var(--font-mono); font-size: 13px; min-width: 22px; padding: 1px 6px; border-radius: 6px; background: var(--accent); color: var(--accent-fg); }
+@media (max-width: 640px) { .cal { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* spotlight */
+.ov { position: fixed; inset: 0; z-index: 100; background: rgba(10, 14, 22, .55); display: flex; justify-content: center; align-items: flex-start; padding: calc(8vh + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+.spot { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,.35); overflow: hidden; display: flex; flex-direction: column; max-height: 78vh; }
+.spot-in { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.spot-in input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: 17px; }
+.res { overflow-y: auto; padding: 6px; }
+.item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 9px 12px; }
+.item[aria-selected="true"] { background: var(--accent-soft); }
+.item .h { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.item .ti { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.item .tb { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.item .sn { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+mark { background: var(--hit); color: inherit; border-radius: 3px; padding: 0 1px; }
+.empty { padding: 26px 16px; text-align: center; color: var(--muted); font-size: 14px; }
+.foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.flash { animation: flash 1.8s ease-out; }
+@keyframes flash { 0%, 35% { box-shadow: 0 0 0 3px var(--accent); background: var(--accent-soft); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
+
+body { margin: 0; }
+</style>
+</head>
+<body>
+
+
+<div class="top"><div class="wrap">
+  <div class="top-row">
+    <div class="brand"><small>사단법인 중국자본시장연구회</small><h1>중자연 관리자</h1></div>
+    <button class="spot-btn" id="spotBtn" type="button" aria-label="Spotlight 검색 열기">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5" stroke-linecap="round"/></svg>
+      <span class="t">Spotlight 검색</span><kbd id="kbdHint">Ctrl K</kbd>
+    </button>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-go="docs" id="t-docs">행정처리업무 서류</button>
+    <button class="tab" role="tab" data-go="info" id="t-info">기본정보</button>
+    <button class="tab" role="tab" data-go="tasks" id="t-tasks">업무·데드라인</button>
+  </div>
+</div></div>
+
+<main class="wrap">
+
+<!-- TAB 1 -->
+<section class="panel" data-tab="docs" data-label="서류" hidden>
+  <div class="sec-head"><h2>행정처리업무 서류 모음</h2><p>업로드한 서류 5개 (원본 파일은 이 페이지에 포함되지 않고 요약만 담김)</p></div>
+  <div class="stack">
+
+    <article class="doc" data-idx data-title="등기사항전부증명서 (말소사항 포함)">
+      <div class="doc-top"><div><h3>등기사항전부증명서 (말소사항 포함)</h3><div class="file">법인인감26_09.pdf</div></div><span class="tag warn">열람용 · 법적 효력 없음</span></div>
+      <div class="dl" data-pdf="docs/reg.pdf" data-name="법인인감26_09.pdf"></div>
+      <dl class="kv">
+        <dt>열람일시</dt><dd>2026-09-09 15:41 (3쪽)</dd>
+        <dt>등기번호 / 등록번호</dt><dd class="mono">003505 / 250121-0035059</dd>
+        <dt>주사무소</dt><dd>서울특별시 영등포구 국제금융로8길 19, 401호 (여의도동, 중앙빌딩)</dd>
+        <dt>설립허가 / 법인성립</dt><dd>2016-08-26 / 2016-09-19</dd>
+        <dt>자산의 총액</dt><dd>15,497,218원</dd>
+        <dt>관할등기소</dt><dd>서울남부지방법원 등기국 (발행: 법원행정처 등기정보중앙관리소)</dd>
+        <dt>임원 (현재)</dt><dd>이사 임병익, 조용준, 정유신, 이규엽, 최영진, 홍원호. 대표권은 이사 최영진만 보유 (2022-11-10 대표권제한규정 설정)</dd>
+        <dt>최근 등기</dt><dd>2024-10-08 이사 중임 등기 (2024-09-19 중임). 최영진 주소변경 등기 2024-03-26</dd>
+        <dt>목적사업</dt><dd>월례 세미나, 금융투자업계 공개·준공개 세미나, 간행물 발간, 해외 중국전문가 초청 행사, 대중국 교류활동 지원, 심화연구, 기타 목적 수행 사업</dd>
+      </dl>
+      <p class="note"><b>참고</b> 실선(말소사항)은 이전 임원 유재훈, 이창영, 정태영, 변웅재 등. 공식 제출용은 열람용이 아니라 발급용으로 다시 출력해야 함.</p>
+    </article>
+
+    <article class="doc" data-idx data-title="사업자등록증명 (비영리법인)">
+      <div class="doc-top"><div><h3>사업자등록증명 (수익사업을 하지 않는 비영리법인 및 국가기관 등)</h3><div class="file">사업자등록증명.pdf</div></div><span class="tag">발급 2024-01-15</span></div>
+      <div class="dl" data-pdf="docs/biz.pdf" data-name="사업자등록증명.pdf"></div>
+      <dl class="kv">
+        <dt>발급기관</dt><dd>영등포세무서장 (민원봉사실, 연락처 02-2630-9227)</dd>
+        <dt>발급번호 / 접수번호</dt><dd class="mono">4765-077-0937-995 / 503738256212</dd>
+        <dt>사업자등록번호</dt><dd class="mono">505-82-11804</dd>
+        <dt>대표자</dt><dd>최영진</dd>
+        <dt>개업일 / 등록일</dt><dd>2016-08-26 / 2016-10-26</dd>
+        <dt>사업장 소재지</dt><dd>서울특별시 영등포구 국제금융로8길 19, 401호 (여의도동, 중앙빌딩)</dd>
+        <dt>공동사업자</dt><dd>해당사항 없음</dd>
+      </dl>
+      <p class="note"><b>참고</b> 위·변조 여부는 발급일로부터 90일 이내 홈택스에서 발급번호로 확인 가능. 발급일(2024-01-15) 기준이라 제출처가 최신본을 요구하면 재발급 필요.</p>
+    </article>
+
+    <article class="doc" data-idx data-title="이사 등 선임명세서 (사업연도 2025)">
+      <div class="doc-top"><div><h3>이사 등 선임명세서 (상속세 및 증여세법 시행규칙 별지 제26호의2)</h3><div class="file">이사_등_선임명세서.docx / 이사_등_선임명세서.pdf</div></div><span class="tag">사업연도 2025</span></div>
+      <div class="dl" data-pdf="docs/directors.pdf" data-name="이사_등_선임명세서.pdf"></div>
+      <div class="scroll-x"><table class="docs-table">
+        <thead><tr><th>성명</th><th>선임일</th><th>상임·비상임</th><th>구분</th></tr></thead>
+        <tbody>
+          <tr><td>임병익</td><td class="mono">2018-09-19</td><td>비상임</td><td>이사</td></tr>
+          <tr><td>조용준</td><td class="mono">2018-09-19</td><td>비상임</td><td>이사</td></tr>
+          <tr><td>정유신</td><td class="mono">2018-09-19</td><td>비상임</td><td>이사</td></tr>
+          <tr><td>홍원호</td><td class="mono">2024-09-19</td><td>비상임</td><td>이사</td></tr>
+          <tr><td>이규엽</td><td class="mono">2018-09-19</td><td>비상임</td><td>이사</td></tr>
+          <tr><td>최영진</td><td class="mono">2022-09-19</td><td>상임</td><td>이사</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note"><b>참고</b> 2번 표(기준초과 이사 및 임·직원 경비 명세)는 비어 있음. 서식의 선임일은 최초 선임일 기준으로 보이며, 등기부의 중임 시점과 다름.</p>
+    </article>
+
+    <article class="doc" data-idx data-title="정관 (2018-12-11 변경) 및 금융위원회 허가 통보">
+      <div class="doc-top"><div><h3>정관 (2018-12-11 변경) · 금융위원회 허가 통보 · 신구조문 대비표</h3><div class="file">정관-중국자본시장정관변경2018-12-11.pdf</div></div><span class="tag ok">금융위 허가 2018-12-12 (글로벌금융과-2123)</span></div>
+      <div class="dl" data-pdf="docs/articles.pdf" data-name="정관-중국자본시장정관변경2018-12-11.pdf"></div>
+      <p>정관 변경 신청(2018-12-11)에 대해 금융위원회가 원안대로 허가. 정관 부칙상 시행일은 2018-12-11.</p>
+      <div class="scroll-x"><table class="docs-table">
+        <thead><tr><th>조문</th><th>변경 전</th><th>변경 후</th></tr></thead>
+        <tbody>
+          <tr><td>제9조 임원의 구성</td><td>부회장 10인</td><td>부회장 8인 이상 12인 이하</td></tr>
+          <tr><td>제10조 임원의 선임</td><td>⑤ 이사와 감사는 주무관청의 승인을 받아 취임</td><td>⑤ 삭제 (주무관청 승인 요건 폐지)</td></tr>
+          <tr><td>제31조 기부금 및 실적공개</td><td>인터넷 사이트를 갖추게 될 경우 인터넷으로 공개</td><td>법인의 홈페이지 사이트를 통해 공개</td></tr>
+        </tbody>
+      </table></div>
+      <h3 style="font-size:14px">자주 찾는 조항</h3>
+      <ul class="clean">
+        <li><b>제9조</b> 임원: 회장(이사장) 1인, 이사 6인, 감사 2인, 부회장 8~12인. 보수 없음</li>
+        <li><b>제10조</b> 임원 선임: 이사는 총회에서 과반수 결의로 선임. 회장은 이사 중에서 이사회 과반수 결의. 이사·감사 보선은 결원 발생일부터 2개월 이내</li>
+        <li><b>제12조</b> 이사 임기 2년 (연임 가능). 보선된 이사의 임기는 전임자의 잔여기간</li>
+        <li><b>제15조</b> 정기이사회는 매 분기 1회. 임시이사회는 이사장 또는 재적이사 과반수의 서면 요청 시</li>
+        <li><b>제17조</b> 정기총회는 회계연도 종료 후 3개월 이내. 임시총회는 회장 또는 재적이사 과반수나 총 정회원 3분의 1 이상 서면 요청 시. 소집은 7일 전까지 서면 통지</li>
+        <li><b>제24조</b> 회계연도: 매년 1월 1일부터 12월 31일</li>
+        <li><b>제26조</b> 사업계획서·수지예산서, 사업실적·수지결산서·재산목록을 이사회 의결을 거쳐 주무관청에 제출</li>
+        <li><b>제27조</b> 정관 변경: 총회에서 총 정회원 3분의 2 이상 찬성 + 주무관청 허가</li>
+        <li><b>제28조</b> 해산: 총 정회원 4분의 3 이상 찬성</li>
+        <li><b>제31조</b> 연간 기부금 모금액 및 활동실적을 다음 해 3월 말까지 회원들에게 이메일 통지하고 법인 홈페이지에 공개</li>
+      </ul>
+      <p class="note"><b>확인 필요</b> 제10조 ①~③, 제12조 ①이 원본 PDF에 노란 형광펜으로 표시되어 있음 (임원 선임·임기 관련).</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- TAB 2 -->
+<section class="panel" data-tab="info" data-label="기본정보" hidden>
+  <div class="sec-head"><h2>중자연 기본정보</h2><p>값 옆의 복사 버튼으로 바로 복사</p></div>
+  <div class="grid">
+    <div class="card" data-idx data-title="핵심 번호">
+      <h3>핵심 번호</h3>
+      <div class="row"><span class="k">사업자등록번호</span><span class="vwrap"><span class="v big mono">505-82-11804</span><button class="copy" data-copy="505-82-11804" type="button">복사</button></span></div>
+      <div class="row"><span class="k">법인등록번호</span><span class="vwrap"><span class="v big mono">250121-0035059</span><button class="copy" data-copy="250121-0035059" type="button">복사</button></span></div>
+      <div class="row"><span class="k">등기번호</span><span class="vwrap"><span class="v mono">003505</span><button class="copy" data-copy="003505" type="button">복사</button></span></div>
+    </div>
+    <div class="card" data-idx data-title="영등포세무서">
+      <h3>관할 세무서</h3>
+      <div class="row"><span class="k">세무서</span><span class="v">영등포세무서 (민원봉사실)</span></div>
+      <div class="row"><span class="k">연락처</span><span class="vwrap"><span class="v big mono">02-2630-9227</span><button class="copy" data-copy="02-2630-9227" type="button">복사</button></span></div>
+    </div>
+    <div class="card" data-idx data-title="홈페이지" id="hpCard" data-extra="">
+      <h3>홈페이지</h3>
+      <div class="row"><span class="k">주소</span><span class="vwrap"><input class="hp" id="hp" type="text" placeholder="주소를 입력하세요" aria-label="홈페이지 주소"><button class="copy" id="hpCopy" type="button">복사</button></span></div>
+      <p class="note" style="margin-top:8px">입력한 주소는 이 브라우저에만 저장됨. 정관 제31조에 따라 기부금·활동실적 공개 장소.</p>
+    </div>
+    <div class="card" data-idx data-title="법인 개요">
+      <h3>법인 개요</h3>
+      <div class="row"><span class="k">명칭</span><span class="v">사단법인 중국자본시장연구회</span></div>
+      <div class="row"><span class="k">대표자</span><span class="v">최영진 (대표권은 최영진만 보유)</span></div>
+      <div class="row"><span class="k">주사무소</span><span class="v">서울특별시 영등포구 국제금융로8길 19, 401호 (여의도동, 중앙빌딩)</span></div>
+      <div class="row"><span class="k">회계연도</span><span class="v">매년 1월 1일 ~ 12월 31일</span></div>
+      <div class="row"><span class="k">자산총액</span><span class="v mono">15,497,218원</span></div>
+    </div>
+    <div class="card" data-idx data-title="주요 일자">
+      <h3>주요 일자</h3>
+      <div class="row"><span class="k">설립허가</span><span class="v mono">2016-08-26</span></div>
+      <div class="row"><span class="k">개업일</span><span class="v mono">2016-08-26</span></div>
+      <div class="row"><span class="k">법인성립</span><span class="v mono">2016-09-19</span></div>
+      <div class="row"><span class="k">사업자등록일</span><span class="v mono">2016-10-26</span></div>
+      <div class="row"><span class="k">정관 변경 허가</span><span class="v mono">2018-12-12</span></div>
+    </div>
+    <div class="card" data-idx data-title="주무관청 금융위원회">
+      <h3>주무관청</h3>
+      <div class="row"><span class="k">기관</span><span class="v">금융위원회 (글로벌금융과)</span></div>
+      <div class="row"><span class="k">전화 / 팩스</span><span class="v mono">02-2100-2894 / 02-2100-2938</span></div>
+      <div class="row"><span class="k">주소</span><span class="v">서울특별시 종로구 세종대로 209</span></div>
+      <p class="note" style="margin-top:8px">2018년 정관변경 허가 통보서 기재 정보. 담당 부서와 연락처는 변경됐을 수 있음.</p>
+    </div>
+    <div class="card" data-idx data-title="임원 현황 이사">
+      <h3>임원 현황 (이사 6명)</h3>
+      <div class="row"><span class="k">최영진</span><span class="v">상임 · 대표 · 선임 2022-09-19</span></div>
+      <div class="row"><span class="k">임병익</span><span class="v">비상임 · 선임 2018-09-19</span></div>
+      <div class="row"><span class="k">조용준</span><span class="v">비상임 · 선임 2018-09-19</span></div>
+      <div class="row"><span class="k">정유신</span><span class="v">비상임 · 선임 2018-09-19</span></div>
+      <div class="row"><span class="k">이규엽</span><span class="v">비상임 · 선임 2018-09-19</span></div>
+      <div class="row"><span class="k">홍원호</span><span class="v">비상임 · 선임 2024-09-19</span></div>
+      <p class="note" style="margin-top:8px">이사 임기 2년. 마지막 중임일 2024-09-19 기준 임기 만료는 2026-09-19.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TAB 3 -->
+<section class="panel" data-tab="tasks" data-label="업무" hidden>
+  <div class="sec-head"><h2>업무 범위와 데드라인</h2><p>회계연도 12월 말 결산 기준, 매년 반복</p></div>
+  <div class="note" style="margin-bottom:16px" data-idx data-title="임원 임기 만료 확인">
+    <b>확인 필요: 이사 임기</b> 이사 6명의 마지막 중임일이 2024-09-19라서 정관 제12조(임기 2년)에 따른 만료일은 2026-09-19. 이후 중임 결의와 등기가 끝났는지 확인하고, 안 됐다면 임원 변경 보고와 변경등기 대상.
+  </div>
+  <div class="next" id="next"></div>
+  <div class="cal" id="cal" aria-label="월별 마감 달력"></div>
+  <div id="taskTables" class="stack"></div>
+</section>
+
+</main>
+
+<!-- Spotlight -->
+<div class="ov" id="ov" hidden>
+  <div class="spot" role="dialog" aria-modal="true" aria-label="Spotlight 검색">
+    <div class="spot-in">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5" stroke-linecap="round"/></svg>
+      <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="번호, 이름, 조항, 업무 등 아무거나 검색" aria-label="검색어">
+      <kbd>esc</kbd>
+    </div>
+    <div class="res" id="res" role="listbox"></div>
+    <div class="foot"><span>↑↓ 이동</span><span>Enter 열기</span><span>여러 단어는 모두 포함된 항목만 표시</span></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TASKS = [
+    { grp: "Ⅰ. 기부금지정단체(공익법인등) 관련 행정업무", rows: [
+      { n: 1, t: "기부금 모금액 및 활용실적 공개", d: "명세서 작성 · 법인 홈페이지 게시 · 국세청 홈택스 공개", orig: "사업연도 종료 후 3개월", when: "매년 3월 말까지", m: 3, day: 31 },
+      { n: 2, t: "공익법인 결산서류 등 공시", d: "홈택스 공익법인 공시시스템 결산서류 등록 (해당 시)", orig: "사업연도 종료 후 4개월", when: "매년 4월 말까지", m: 4, day: 30 },
+      { n: 3, t: "공익법인 의무이행 여부 등 보고", d: "전용계좌 · 장부작성 · 공시 · 수혜자 선정 등 의무이행 보고", orig: "사업연도 종료 후 4개월", when: "매년 4월 말까지", m: 4, day: 30 },
+      { n: 4, t: "출연재산 등에 대한 보고서 제출", d: "출연 · 운용 · 사용 명세 보고서 작성 및 제출 (해당 시)", orig: "사업연도 종료 후 4개월", when: "매년 4월 말까지", m: 4, day: 30 },
+      { n: 5, t: "기부금영수증 발급명세서", d: "발급명세 작성 · 보관 및 관할 세무서 제출", orig: "사업연도 종료 후 6개월", when: "매년 6월 말까지", m: 6, day: 30 },
+      { n: 6, t: "기부금 전용계좌 관리", d: "개설 · 변경 신고, 사용내역 관리 점검", orig: "수시", when: "수시 (변경 시)" },
+      { n: 7, t: "지정기간 만료 대응", d: "재지정(지정기간 연장) 신청서 작성 및 제출", orig: "만료 전 사전 관리", when: "지정기간 만료 전 (만료일 확인 필요)" },
+      { n: 8, t: "홈택스 상시 대행", d: "홈택스 상 각종 신청 · 제출 · 조회 및 자료 관리. 일반 행정업무는 가능하나 세무사법에 저촉되는 세무업무는 불가", orig: "상시", when: "상시" }
+    ]},
+    { grp: "Ⅱ. 사단법인 운영 관련 행정업무", rows: [
+      { n: 1, t: "사업계획서 · 예산서 제출", d: "주무관청(금융위원회) 제출 서류 작성 및 제출", orig: "사업연도 개시 1개월 전", when: "매년 11월 말까지", m: 11, day: 30 },
+      { n: 2, t: "사업실적 · 결산보고서 제출", d: "주무관청 제출 서류 작성 및 제출", orig: "사업연도 종료 후 2개월", when: "매년 2월 말까지", m: 2, day: 28 },
+      { n: 3, t: "정관변경 허가 신청", d: "정관 개정안 · 총회 의사록 등 허가신청 서류 일체", orig: "수시", when: "수시" },
+      { n: 4, t: "임원 변경 보고", d: "임원 취임 · 해임 · 연임 관련 주무관청 보고", orig: "수시", when: "수시 (임원 변경 시)" },
+      { n: 5, t: "총회 · 이사회 운영 지원", d: "소집통지 · 의사록 · 결의서 등 서식 작성 및 검토. 정기이사회 분기 1회, 정기총회 회계연도 종료 후 3개월 이내", orig: "수시", when: "수시 (정기총회는 3월 말까지)" },
+      { n: 6, t: "홈페이지 공시 및 관리", d: "법정 공시사항 게시 · 갱신, 공시 이력 관리", orig: "연 1회 이상 / 수시", when: "매년 1회 이상" },
+      { n: 7, t: "주무관청 자료제출 요구 대응", d: "실태점검 · 자료제출 요구에 대한 회신 문서 작성", orig: "수시", when: "수시" },
+      { n: 8, t: "법인 운영 일반 자문", d: "운영규정 · 내부통제 · 회원관리 등 행정 자문", orig: "상시", when: "상시" }
+    ]}
+  ];
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  function nextDate(m, d) {
+    var dt = new Date(today.getFullYear(), m - 1, d);
+    if (dt < today) dt = new Date(today.getFullYear() + 1, m - 1, d);
+    return dt;
+  }
+  function diff(dt) { return Math.round((dt - today) / 86400000); }
+  function dchip(n) {
+    var c = n <= 14 ? "urgent" : n <= 45 ? "soon" : "";
+    return '<span class="dchip ' + c + '">' + (n === 0 ? "D-day" : "D-" + n) + "</span>";
+  }
+  function fmt(dt) { return dt.getFullYear() + "." + (dt.getMonth() + 1) + "." + dt.getDate(); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  // tasks render
+  var dated = [];
+  var html = "";
+  TASKS.forEach(function (g, gi) {
+    html += '<div class="card" style="padding:0;overflow:hidden"><h3 style="padding:14px 16px 0;margin:0 0 8px;font-size:14px;color:var(--fg)">' + esc(g.grp) + '</h3><div class="scroll-x"><table style="min-width:640px"><thead><tr><th>No</th><th>업무 항목</th><th>세부 내용</th><th>마감</th><th>다음 마감</th></tr></thead><tbody>';
+    g.rows.forEach(function (r) {
+      var nd = "", chip = "";
+      if (r.m) {
+        var dt = nextDate(r.m, r.day), n = diff(dt);
+        dated.push({ r: r, dt: dt, n: n });
+        chip = dchip(n) + ' <span class="orig mono">' + fmt(dt) + "</span>";
+      }
+      html += '<tr data-idx data-title="' + esc(r.t) + '"><td class="mono">' + r.n + '</td><td><b>' + esc(r.t) + '</b></td><td>' + esc(r.d) + '</td><td><div class="when' + (r.m ? "" : " none") + '">' + esc(r.when) + '</div><div class="orig">' + esc(r.orig) + "</div></td><td>" + (chip || '<span class="orig">-</span>') + "</td></tr>";
+    });
+    html += "</tbody></table></div></div>";
+  });
+  document.getElementById("taskTables").innerHTML = html;
+
+  dated.sort(function (a, b) { return a.n - b.n; });
+  var nx = "";
+  dated.slice(0, 3).forEach(function (x) {
+    nx += '<div class="card" data-idx data-title="다가오는 마감 ' + esc(x.r.t) + '"><div class="dd">' + (x.n === 0 ? "D-day" : "D-" + x.n) + '</div><div class="nm">' + esc(x.r.t) + '</div><div class="wh">' + esc(x.r.when) + " · " + fmt(x.dt) + "</div></div>";
+  });
+  document.getElementById("next").innerHTML = nx;
+
+  var cal = "";
+  for (var mo = 1; mo <= 12; mo++) {
+    var items = dated.filter(function (x) { return x.r.m === mo; });
+    cal += '<div class="m' + (today.getMonth() + 1 === mo ? " now" : "") + '"><b>' + mo + "월</b>" + (items.length ? '<span class="n">' + items.length + "</span>" : "") + "</div>";
+  }
+  document.getElementById("cal").innerHTML = cal;
+
+  // tabs
+  var tabs = ["docs", "info", "tasks"];
+  function show(id, noHash) {
+    if (tabs.indexOf(id) < 0) id = "docs";
+    document.querySelectorAll("[data-tab]").forEach(function (p) { p.hidden = p.getAttribute("data-tab") !== id; });
+    document.querySelectorAll(".tab").forEach(function (b) { b.setAttribute("aria-selected", b.getAttribute("data-go") === id ? "true" : "false"); });
+    try { if (!noHash) history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+  document.querySelectorAll(".tab").forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-go")); }); });
+  var h = (location.hash || "").replace("#", "");
+  show(tabs.indexOf(h) >= 0 ? h : "docs", true);
+
+  // copy
+  function copyText(text, btn) {
+    function done() { var o = btn.textContent; btn.textContent = "복사됨"; setTimeout(function () { btn.textContent = o; }, 1200); }
+    function fallback() {
+      var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  }
+  document.querySelectorAll("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(b.getAttribute("data-copy"), b); }); });
+
+  // PDF downloads (standalone: plain download links)
+  document.querySelectorAll(".dl").forEach(function (box) {
+    var url = box.getAttribute("data-pdf"), name = box.getAttribute("data-name");
+    box.innerHTML = '<a class="btn" href="' + url + '" target="_blank" rel="noopener">PDF 열기</a><a class="btn primary" href="' + url + '" download="' + name + '">PDF 다운로드</a>';
+  });
+
+  // homepage (per-browser)
+  var hp = document.getElementById("hp"), hpCard = document.getElementById("hpCard");
+  try { var sv = localStorage.getItem("jjy-homepage"); if (sv) { hp.value = sv; hpCard.setAttribute("data-extra", sv); } } catch (e) {}
+  hp.addEventListener("input", function () {
+    hpCard.setAttribute("data-extra", hp.value);
+    try { localStorage.setItem("jjy-homepage", hp.value); } catch (e) {}
+  });
+  document.getElementById("hpCopy").addEventListener("click", function () { if (hp.value) copyText(hp.value, this); });
+
+  // spotlight
+  var ov = document.getElementById("ov"), q = document.getElementById("q"), res = document.getElementById("res");
+  var index = [], hits = [], sel = 0;
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  document.getElementById("kbdHint").textContent = isMac ? "⌘ K" : "Ctrl K";
+
+  function build() {
+    index = [];
+    document.querySelectorAll("[data-idx]").forEach(function (el) {
+      var panel = el.closest("[data-tab]");
+      var text = (el.textContent + " " + (el.getAttribute("data-extra") || "")).replace(/\s+/g, " ").trim();
+      index.push({ el: el, tab: panel.getAttribute("data-tab"), label: panel.getAttribute("data-label"), title: el.getAttribute("data-title") || text.slice(0, 30), text: text });
+    });
+  }
+  function hl(s, terms) {
+    var out = esc(s);
+    terms.forEach(function (t) {
+      if (!t) return;
+      var re = new RegExp("(" + esc(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+      out = out.replace(re, "<mark>$1</mark>");
+    });
+    return out;
+  }
+  function snippet(text, terms) {
+    var low = text.toLowerCase(), pos = -1;
+    for (var i = 0; i < terms.length; i++) { var p = low.indexOf(terms[i]); if (p >= 0 && (pos < 0 || p < pos)) pos = p; }
+    var start = Math.max(0, pos - 24), end = Math.min(text.length, pos + 80);
+    return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+  }
+  function render() {
+    var terms = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) {
+      hits = index.slice(0, 8).map(function (x) { return { x: x, s: "" }; });
+      res.innerHTML = '<div class="empty">검색어를 입력하면 세 탭의 모든 텍스트에서 찾아줍니다.<br>예: 505-82, 최영진, 제12조, 4월</div>';
+      hits = []; return;
+    }
+    hits = [];
+    index.forEach(function (x) {
+      var low = x.text.toLowerCase();
+      if (terms.every(function (t) { return low.indexOf(t) >= 0; })) {
+        var score = terms.reduce(function (a, t) { return a + (x.title.toLowerCase().indexOf(t) >= 0 ? 2 : 1); }, 0);
+        hits.push({ x: x, s: snippet(x.text, terms), score: score });
+      }
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    hits = hits.slice(0, 20);
+    sel = 0;
+    if (!hits.length) { res.innerHTML = '<div class="empty">일치하는 항목이 없습니다.</div>'; return; }
+    res.innerHTML = hits.map(function (h, i) {
+      return '<button type="button" class="item" role="option" data-i="' + i + '" aria-selected="' + (i === 0) + '"><div class="h"><span class="ti">' + hl(h.x.title, terms) + '</span><span class="tb">' + esc(h.x.label) + '</span></div><div class="sn">' + hl(h.s, terms) + "</div></button>";
+    }).join("");
+  }
+  function mark() {
+    res.querySelectorAll(".item").forEach(function (b, i) {
+      b.setAttribute("aria-selected", i === sel ? "true" : "false");
+      if (i === sel) b.scrollIntoView({ block: "nearest" });
+    });
+  }
+  function openSpot() { build(); ov.hidden = false; q.value = ""; render(); setTimeout(function () { q.focus(); }, 0); }
+  function closeSpot() { ov.hidden = true; }
+  function go(i) {
+    var h = hits[i]; if (!h) return;
+    closeSpot(); show(h.x.tab);
+    setTimeout(function () {
+      h.x.el.scrollIntoView({ behavior: "smooth", block: "center" });
+      h.x.el.classList.remove("flash"); void h.x.el.offsetWidth; h.x.el.classList.add("flash");
+    }, 30);
+  }
+  document.getElementById("spotBtn").addEventListener("click", openSpot);
+  ov.addEventListener("mousedown", function (e) { if (e.target === ov) closeSpot(); });
+  q.addEventListener("input", render);
+  res.addEventListener("click", function (e) { var b = e.target.closest(".item"); if (b) go(+b.getAttribute("data-i")); });
+  res.addEventListener("mousemove", function (e) { var b = e.target.closest(".item"); if (b) { sel = +b.getAttribute("data-i"); mark(); } });
+  document.addEventListener("keydown", function (e) {
+    var k = e.key, typing = /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || "");
+    if ((e.metaKey || e.ctrlKey) && (k === "k" || k === "K")) { e.preventDefault(); ov.hidden ? openSpot() : closeSpot(); return; }
+    if (k === "/" && !typing && ov.hidden) { e.preventDefault(); openSpot(); return; }
+    if (ov.hidden) return;
+    if (k === "Escape") { closeSpot(); }
+    else if (k === "ArrowDown") { e.preventDefault(); if (hits.length) { sel = (sel + 1) % hits.length; mark(); } }
+    else if (k === "ArrowUp") { e.preventDefault(); if (hits.length) { sel = (sel - 1 + hits.length) % hits.length; mark(); } }
+    else if (k === "Enter") { e.preventDefault(); go(sel); }
+  });
+})();
+</script>
+
+</body>
+</html>
